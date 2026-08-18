@@ -175,13 +175,19 @@ int main(void)
 
     while (1)
     {
-        // 1. Snapshot the audio buffer safely
+        // 1. Snapshot the audio buffer safely (Unwrapping the ring buffer)
         cli(); 
+        uint8_t read_idx = buffer_index; // The current index holds the oldest sample
         for(uint8_t i = 0; i < FFT_SIZE; i++) {
-            f_real[i] = audio_buffer[i];
+            f_real[i] = audio_buffer[read_idx];
             f_imag[i] = 0; 
+            
+            read_idx++;
+            if (read_idx >= FFT_SIZE) {
+                read_idx = 0; // Wrap around
+            }
         }
-        sei(); 
+        sei();
 
         // 2. Perform the FFT
         calculate_fft(f_real, f_imag);
