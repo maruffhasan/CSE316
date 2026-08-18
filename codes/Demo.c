@@ -1,130 +1,242 @@
-#define F_CPU 16000000UL      // Updated to 16 MHz
+#define F_CPU 16000000UL
 #include <avr/io.h>
 #include <util/delay.h>
-#include <avr/interrupt.h>    // Required for hardware interrupts
+#include <avr/interrupt.h>
 
 #include "SSD1306.h"
 #include "Font5x8.h"
 
 /* ------------------------------------------------------------------
-   DATA ACQUISITION DEMO — Stage 2
-   Goal: Verify deterministic sampling via Timer1 and ADC interrupts.
-   This code samples audio inputs at 10 kHz, subtracts the 2.5V DC 
-   offset, and prints the raw integer values to the OLED to confirm 
-   the hardware and interrupts are working properly before moving 
-   to the fixed-point FFT calculations.
+   FULL AUDIO SPECTRUM ANALYZER — Stage 3 (Final)
+   Goal: 10kHz deterministic sampling via Timer1 + ADC, followed by 
+   a 32-point fixed-point Radix-2 FFT to extract frequency bins.
+   The magnitudes are calculated and pushed to the OLED bargraph,
+   featuring peak-hold decay and falling dots for visual dynamics.
    ------------------------------------------------------------------ */
 
-#define FFT_SIZE 32
+#define FFT_SIZE     32
+#define FFT_STAGES   5
+#define NUM_BARS     16
+#define BAR_WIDTH    6
+#define BAR_GAP      2
+#define SCREEN_H     64
+#define BASELINE     (SCREEN_H - 1)
+#define MAX_BAR_H    (SCREEN_H - 12)
+#define PEAK_HOLD    3    // Number of frames the dot hovers before falling
 
-volatile int8_t audio_buffer[FFT_SIZE]; // Ring buffer for audio samples
+volatile int8_t audio_buffer[FFT_SIZE];
 volatile uint8_t buffer_index = 0;
-volatile uint8_t current_channel = 0;   // 0 for Mic (PA0), 1 for Jack (PA1)
+volatile uint8_t current_channel = 0;
 
+uint8_t bar_height[NUM_BARS] = {0};
+uint8_t peak_height[NUM_BARS] = {0}; // Tracks the falling dots
+uint8_t peak_delay[NUM_BARS] = {0};  // Timer for the hover effect 
+uint8_t peak_velocity[NUM_BARS] = {0}; // NEW: Tracks downward momentum for gravity
+
+// Twiddle factors (Sine/Cosine table) for N=32, scaled by 128
+const int8_t W_real[16] = {127, 124, 117, 105, 89, 70, 48, 24, 0, -24, -48, -70, -89, -105, -117, -124};
+const int8_t W_imag[16] = {0, -24, -48, -70, -89, -105, -117, -124, -127, -124, -117, -105, -89, -70, -48, -24};
+
+// --- Hardware Initialization ---
 void Hardware_Init(void) {
-    // --- 1. Mode Switch Button (INT0 on PD2) ---
-    DDRD &= ~(1 << PD2);    // Set PD2 as input
-    PORTD |= (1 << PD2);    // Enable internal pull-up resistor
-    MCUCR |= (1 << ISC01);  // Trigger on falling edge
-    GICR |= (1 << INT0);    // Enable external interrupt 0
+    DDRD &= ~(1 << PD2);
+    PORTD |= (1 << PD2);
+    MCUCR |= (1 << ISC01);
+    GICR |= (1 << INT0);
 
-    // --- 2. ADC Setup ---
-    // REFS0 = AVCC (5V reference)
-    // ADLAR = Left Adjust (so we can just read the 8 MSB from ADCH)
-    ADMUX = (1 << REFS0) | (1 << ADLAR); // Starts on ADC0 (PA0)
-    
-    // ADEN = Enable ADC, ADIE = Enable ADC Interrupt
-    // ADPS2 & ADPS1 = Prescaler 64 (16MHz / 64 = 250kHz ADC clock)
+    ADMUX = (1 << REFS0) | (1 << ADLAR);
     ADCSRA = (1 << ADEN) | (1 << ADIE) | (1 << ADPS2) | (1 << ADPS1);
 
-    // --- 3. Timer1 Setup (10 kHz Nyquist Sampling) ---
-    // WGM12 = CTC Mode
-    // CS11 = Prescaler 8 (16MHz / 8 = 2MHz timer clock)
     TCCR1B = (1 << WGM12) | (1 << CS11);
-    
-    // 2MHz / 10kHz = 200 ticks per sample. (200 - 1 = 199)
     OCR1A = 199; 
-    
-    // OCIE1A = Enable Timer1 Compare Match A Interrupt
     TIMSK |= (1 << OCIE1A);
 
-    // Enable global interrupts
     sei(); 
 }
 
-// Timer1 Interrupt: Fires exactly 10,000 times per second
 ISR(TIMER1_COMPA_vect) {
-    ADCSRA |= (1 << ADSC); // Trigger an ADC conversion
+    ADCSRA |= (1 << ADSC);
 }
 
-// ADC Interrupt: Fires when the conversion is finished
 ISR(ADC_vect) {
-    // Read only the 8 MSB bits. Subtract 128 to remove the 2.5V DC offset.
     int16_t sample = ADCH;
     audio_buffer[buffer_index] = (int8_t)(sample - 128);
 
-    // Increment and wrap the ring buffer
     buffer_index++;
     if (buffer_index >= FFT_SIZE) {
         buffer_index = 0;
     }
 }
 
-// INT0 Interrupt: Fires when you press the button
 ISR(INT0_vect) {
-    current_channel ^= 1; // Toggle between 0 (PA0) and 1 (PA1)
-    
-    // Update the multiplexer to change physical input pins
+    current_channel ^= 1;
     ADMUX = (1 << REFS0) | (1 << ADLAR) | current_channel;
 }
 
-// Function to visually confirm ADC reads on the OLED
-static void draw_raw_values(void)
+// --- Digital Signal Processing ---
+
+// Fast integer square root for magnitude calculation
+uint16_t int_sqrt(uint32_t n) {
+    uint32_t root = 0;
+    uint32_t bit = 1UL << 30; 
+    while (bit > n) bit >>= 2;
+    while (bit != 0) {
+        if (n >= root + bit) {
+            n -= root + bit;
+            root = (root >> 1) + bit;
+        } else {
+            root >>= 1;
+        }
+        bit >>= 2;
+    }
+    return (uint16_t)root;
+}
+
+// 32-Point In-Place Radix-2 FFT
+void calculate_fft(int16_t* fr, int16_t* fi) {
+    uint8_t j = 0;
+    for (uint8_t i = 0; i < FFT_SIZE - 1; i++) {
+        if (i < j) {
+            int16_t tr = fr[i]; fr[i] = fr[j]; fr[j] = tr;
+            int16_t ti = fi[i]; fi[i] = fi[j]; fi[j] = ti;
+        }
+        uint8_t k = FFT_SIZE >> 1;
+        while (k <= j) { j -= k; k >>= 1; }
+        j += k;
+    }
+
+    uint8_t step = 1;
+    for (uint8_t stage = 0; stage < FFT_STAGES; stage++) {
+        uint8_t jump = step << 1;
+        uint8_t twiddle_step = (FFT_SIZE >> 1) / step;
+        for (uint8_t i = 0; i < step; i++) {
+            int8_t wr = W_real[i * twiddle_step];
+            int8_t wi = W_imag[i * twiddle_step];
+            for (uint8_t k = i; k < FFT_SIZE; k += jump) {
+                uint8_t match = k + step;
+                int16_t tr = ((int32_t)fr[match] * wr - (int32_t)fi[match] * wi) >> 7;
+                int16_t ti = ((int32_t)fi[match] * wr + (int32_t)fr[match] * wi) >> 7;
+                fr[match] = fr[k] - tr;
+                fi[match] = fi[k] - ti;
+                fr[k] += tr;
+                fi[k] += ti;
+            }
+        }
+        step = jump;
+    }
+}
+
+// --- Display Rendering ---
+static void draw_spectrum(void)
 {
     GLCD_Clear();
 
-    // Show which input channel is currently active
     GLCD_GotoXY(2, 0);
     if (current_channel == 0) {
-        GLCD_PrintString("MIC (PA0) ACTIVE");
+        GLCD_PrintString("MIC: PA0");
     } else {
-        GLCD_PrintString("JACK (PA1) ACTIVE");
+        GLCD_PrintString("JACK: PA1");
     }
 
-    // Safely grab the most recently saved sample
-    uint8_t read_idx = (buffer_index == 0) ? (FFT_SIZE - 1) : (buffer_index - 1);
-    int8_t latest_sample = audio_buffer[read_idx];
+    for (uint8_t i = 0; i < NUM_BARS; i++)
+    {
+        uint8_t x1 = i * (BAR_WIDTH + BAR_GAP);
+        uint8_t x2 = x1 + BAR_WIDTH - 1;
+        uint8_t y2 = BASELINE;
+        
+        // 1. Draw the solid moving bar
+        if (bar_height[i] > 0) {
+            uint8_t y1 = BASELINE - bar_height[i];
+            GLCD_FillRectangle(x1, y1, x2, y2, GLCD_Black);
+        }
 
-    // Print the raw shifted integer 
-    GLCD_GotoXY(2, 20);
-    GLCD_PrintString("Raw ADC (-128):");
-    
-    GLCD_GotoXY(2, 35);
-    GLCD_PrintInteger(latest_sample);
+        // 2. Draw the floating peak dot
+        if (peak_height[i] > 0) {
+            uint8_t peak_y = BASELINE - peak_height[i];
+            // Draw a 2-pixel thick line for the falling dot so it is clearly visible
+            GLCD_DrawLine(x1, peak_y, x2, peak_y, GLCD_Black);
+            if (peak_y > 0) {
+                GLCD_DrawLine(x1, peak_y - 1, x2, peak_y - 1, GLCD_Black);
+            }
+        }
+    }
 
     GLCD_Render();
 }
 
 int main(void)
 {
+    int16_t f_real[FFT_SIZE];
+    int16_t f_imag[FFT_SIZE];
+
     GLCD_Setup();
     GLCD_SetFont(Font5x8, 5, 8, GLCD_Overwrite);
-    
-    Hardware_Init(); // Start the 10kHz sampling engine!
-
-    GLCD_Clear();
-    GLCD_GotoXY(6, 25);
-    GLCD_PrintString("Hardware Init OK");
-    GLCD_Render();
-    _delay_ms(1200);
+    Hardware_Init(); 
 
     while (1)
     {
-        // Render the text instead of the random bars
-        draw_raw_values();
+        // 1. Snapshot the audio buffer safely
+        cli(); 
+        for(uint8_t i = 0; i < FFT_SIZE; i++) {
+            f_real[i] = audio_buffer[i];
+            f_imag[i] = 0; 
+        }
+        sei(); 
+
+        // 2. Perform the FFT
+        calculate_fft(f_real, f_imag);
+
+        // 3. Calculate magnitudes and process ADVANCED PHYSICS
+        for(uint8_t i = 0; i < NUM_BARS; i++) {
+            uint32_t mag_squared = (int32_t)f_real[i]*f_real[i] + (int32_t)f_imag[i]*f_imag[i];
+            uint16_t mag = int_sqrt(mag_squared);
+            
+            uint8_t target_height = mag >> 3; 
+            if (target_height > MAX_BAR_H) {
+                target_height = MAX_BAR_H;
+            }
+            
+            // --- FLUID BARS (Exponential Moving Average) ---
+            if (target_height > bar_height[i]) {
+                // Punch up instantly for fast attacks (drums/bass)
+                bar_height[i] = target_height; 
+            } else {
+                // Glide down smoothly (Current = 75% Current + 25% Target)
+                // This prevents the jittery "teleporting" look
+                bar_height[i] = ((bar_height[i] * 3) + target_height) >> 2; 
+            }
+
+            // --- KINETIC GRAVITY (Falling Dots) ---
+            if (target_height >= peak_height[i]) {
+                // Push dot up and reset physics
+                peak_height[i] = target_height;
+                peak_delay[i] = PEAK_HOLD; 
+                peak_velocity[i] = 0; // Reset momentum
+            } else {
+                if (peak_delay[i] > 0) {
+                    peak_delay[i]--; // Hover in place at the top
+                } else if (peak_height[i] > 0) {
+                    // Gravity accelerates over time
+                    peak_velocity[i]++; 
+                    
+                    // Bit-shift divides velocity by 2 to control the fall speed
+                    uint8_t drop = peak_velocity[i] >> 1; 
+                    if (drop == 0) drop = 1; // Minimum drop of 1 pixel
+                    
+                    if (peak_height[i] > drop) {
+                        peak_height[i] -= drop;
+                    } else {
+                        peak_height[i] = 0;
+                    }
+                }
+            }
+        }
+
+        // 4. Render to OLED
+        draw_spectrum();
         
-        // Slower refresh rate (~10 FPS) so the text is readable by human eyes
-        _delay_ms(100);   
+        // Slightly faster refresh rate (~33 FPS) for smoother animation
+        _delay_ms(30);   
     }
     return 0;
 }
