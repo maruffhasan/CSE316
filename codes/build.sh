@@ -16,7 +16,7 @@ avrbuild() {
 
   avr-gcc \
     -mmcu="$AVR_MCU" \
-    -DF_CPU=10000000UL \
+    -DF_CPU=16000000UL \
     -Os \
     -Wall \
     "$@" \

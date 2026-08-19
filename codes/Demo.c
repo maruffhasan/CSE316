@@ -127,6 +127,7 @@ void calculate_fft(int16_t* fr, int16_t* fi) {
 }
 
 // --- Display Rendering ---
+/*
 static void draw_spectrum(void)
 {
     GLCD_Clear();
@@ -163,7 +164,61 @@ static void draw_spectrum(void)
 
     GLCD_Render();
 }
+*/
+static void draw_spectrum(void)
+{
+    // Clear the display buffer before drawing the new frame
+    GLCD_Clear();
 
+    // Print the currently active input channel at the top-left corner
+    GLCD_GotoXY(2, 0);
+    if (current_channel == 0) {
+        GLCD_PrintString("MIC: PA0");
+    } else {
+        GLCD_PrintString("JACK: PA1");
+    }
+
+    // Loop through all the frequency bins (16 bars) to draw them
+    for (uint8_t i = 0; i < NUM_BARS; i++)
+    {
+        // Calculate the X coordinates for the current bar
+        uint8_t x1 = i * (BAR_WIDTH + BAR_GAP);
+        uint8_t x2 = x1 + BAR_WIDTH - 1;
+        
+        // The bottom of the bar is anchored to the BASELINE of the screen
+        uint8_t y2 = BASELINE;
+        
+        // 1. Draw the moving bar representing the current frequency magnitude
+        if (bar_height[i] > 0) {
+            // Calculate the top Y coordinate based on the bar height
+            uint8_t y1 = BASELINE - bar_height[i];
+            
+            // Visual separation: Low frequencies (first 8 bars) are solid
+            if (i < 8) {
+                GLCD_FillRectangle(x1, y1, x2, y2, GLCD_Black);
+            } 
+            // High frequencies (remaining 8 bars) are hollow (outline only)
+            else {
+                GLCD_DrawRectangle(x1, y1, x2, y2, GLCD_Black);
+            }
+        }
+
+        // 2. Draw the floating peak dot (Kinetic Gravity effect)
+        if (peak_height[i] > 0) {
+            // Calculate the Y coordinate for the peak dot
+            uint8_t peak_y = BASELINE - peak_height[i];
+            
+            // Draw a 2-pixel thick horizontal line so the falling dot is clearly visible
+            GLCD_DrawLine(x1, peak_y, x2, peak_y, GLCD_Black);
+            if (peak_y > 0) {
+                GLCD_DrawLine(x1, peak_y - 1, x2, peak_y - 1, GLCD_Black);
+            }
+        }
+    }
+
+    // Push the updated buffer to the OLED screen to make it visible
+    GLCD_Render();
+}
 int main(void)
 {
     int16_t f_real[FFT_SIZE];
