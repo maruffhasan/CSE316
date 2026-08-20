@@ -1,18 +1,10 @@
 <circuit version="1.1.0-SR2" rev="260312" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
 
-<item itemtype="MCU" CircId="mega32-1" mainComp="false" Show_id="true" Show_Val="false" Pos="-248,-104" rotation="0" hflip="1" vflip="1" label="mega32-1" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0" Frequency="16 MHz" Program="CSE316/codes/out/Demo.hex" Auto_Load="false" saveEepr="true" Logic_Symbol="false" Wdt_enabled="false" MainMcu="true" SerialMon="-1" />
+<item itemtype="MCU" CircId="mega32-1" mainComp="false" Show_id="true" Show_Val="false" Pos="-248,-104" rotation="0" hflip="1" vflip="1" label="mega32-1" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0" Frequency="16 MHz" Program="../out/Demo.hex" Auto_Load="false" saveEepr="true" Logic_Symbol="false" Wdt_enabled="false" MainMcu="true" SerialMon="-1" />
 
 <item itemtype="Fixed Voltage" CircId="Fixed Voltage-2" mainComp="false" Show_id="false" Show_Val="false" Pos="-328,-12" rotation="0" hflip="1" vflip="1" label="Fixed Voltage-2" idLabPos="-64,-24" labelrot="0" valLabPos="-16,8" valLabRot="0" Voltage="5 V" Out="true" />
 
-<item itemtype="Ssd1306" CircId="Ssd1306-3" mainComp="false" Show_id="true" Show_Val="false" Pos="-12,-24" rotation="0" hflip="1" vflip="1" label="Ssd1306-3" idLabPos="-32,-60" labelrot="0" valLabPos="-16,20" valLabRot="0" Color="White" Width="128 _px" Height="64 _px" Rotate="true" Control_Code="60" Frequency="100 _kHz" />
-
-<item itemtype="Resistor" CircId="Resistor-4" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-64,124" rotation="0" hflip="1" vflip="1" label="Resistor-4" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6.61791" valLabRot="0" Resistance="4.7 kΩ" />
-
-<item itemtype="Resistor" CircId="Resistor-5" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-64,160" rotation="0" hflip="1" vflip="1" label="Resistor-5" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6.61791" valLabRot="0" Resistance="4.7 kΩ" />
-
-<item itemtype="Fixed Voltage" CircId="Fixed Voltage-6" mainComp="false" Show_id="false" Show_Val="false" Pos="64,160" rotation="-180" hflip="1" vflip="1" label="Fixed Voltage-6" idLabPos="-64,-24" labelrot="0" valLabPos="-16,8" valLabRot="0" Voltage="5 V" Out="true" />
-
-<item itemtype="Oscope" CircId="Oscope-7" mainComp="false" Show_id="false" Show_Val="false" Pos="252,-172" rotation="0" hflip="1" vflip="1" label="Oscope-7" idLabPos="-90,-100" labelrot="0" valLabPos="-16,20" valLabRot="0" Basic_X="135 _px" Basic_Y="135 _px" BufferSize="600000" connectGnd="true" InputImped="10 MΩ" TimDiv="1147521656" TimPos="0,0,0,0," VolDiv="1,1,1,1," Tunnels=",,,," Trigger="4" Filter="0.1 V" AutoSC="4" Tracks="2" HideCh="false,false,false,false," VolPos="0,0,0,0," />
+<item itemtype="Oscope" CircId="Oscope-7" mainComp="false" Show_id="false" Show_Val="false" Pos="148,-432" rotation="0" hflip="1" vflip="1" label="Oscope-7" idLabPos="-90,-100" labelrot="0" valLabPos="-16,20" valLabRot="0" Basic_X="135 _px" Basic_Y="135 _px" BufferSize="600000" connectGnd="true" InputImped="10 MΩ" TimDiv="1147521656" TimPos="0,0,0,0," VolDiv="1,1,1,1," Tunnels=",,,," Trigger="4" Filter="0.1 V" AutoSC="4" Tracks="2" HideCh="false,false,false,false," VolPos="0,0,0,0," />
 
 <item itemtype="Push" CircId="Push-8" mainComp="false" Show_id="false" Show_Val="false" Pos="-316,24" rotation="0" hflip="1" vflip="1" label="Push-8" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Norm_Close="false" Poles="1" />
 
@@ -42,11 +34,7 @@
 
 <item itemtype="Fixed Voltage" CircId="Fixed Voltage-44" mainComp="false" Show_id="false" Show_Val="false" Pos="-128,-20" rotation="-360" hflip="-1" vflip="1" label="Fixed Voltage-44" idLabPos="-64,-24" labelrot="0" valLabPos="-16,8" valLabRot="0" Voltage="5 V" Out="true" />
 
-<item itemtype="Node" CircId="Node-18" mainComp="false" Pos="-80,40" />
-
-<item itemtype="Node" CircId="Node-19" mainComp="false" Pos="-128,48" />
-
-<item itemtype="Node" CircId="Node-20" mainComp="false" Pos="12,160" />
+<item itemtype="Ili9341" CircId="Ili9341-46" mainComp="false" Show_id="true" Show_Val="false" Pos="144,-140" rotation="0" hflip="1" vflip="1" label="Ili9341-46" idLabPos="-32,-180" labelrot="0" valLabPos="-16,20" valLabRot="0" />
 
 <item itemtype="Node" CircId="Node-22" mainComp="false" Pos="-332,40" />
 
@@ -71,22 +59,6 @@
 <item itemtype="Node" CircId="Node-42" mainComp="false" Pos="-180,-144" />
 
 <item itemtype="Node" CircId="Node-45" mainComp="false" Pos="-192,-16" />
-
-<item itemtype="Connector" uid="Connector-1" startpinid="Resistor-4-lPin" endpinid="Node-18-1" pointList="-80,124,-80,40" />
-
-<item itemtype="Connector" uid="Connector-3" startpinid="Node-18-2" endpinid="Ssd1306-3-PinSda" pointList="-80,40,-52,40,-52,24" />
-
-<item itemtype="Connector" uid="Connector-4" startpinid="Resistor-5-lPin" endpinid="Node-19-1" pointList="-80,160,-128,160,-128,48" />
-
-<item itemtype="Connector" uid="Connector-5" startpinid="mega32-1-PORTC0" endpinid="Node-19-0" pointList="-192,48,-128,48" />
-
-<item itemtype="Connector" uid="Connector-6" startpinid="Node-19-2" endpinid="Ssd1306-3-PinSck" pointList="-128,48,-60,48,-60,24" />
-
-<item itemtype="Connector" uid="Connector-7" startpinid="Node-20-1" endpinid="Fixed Voltage-6-outnod" pointList="12,160,48,160" />
-
-<item itemtype="Connector" uid="Connector-8" startpinid="Resistor-4-rPin" endpinid="Node-20-0" pointList="-48,124,12,124,12,160" />
-
-<item itemtype="Connector" uid="Connector-9" startpinid="Node-20-2" endpinid="Resistor-5-rPin" pointList="12,160,-48,160" />
 
 <item itemtype="Connector" uid="Connector-10" startpinid="Push-8-switch0pinN" endpinid="mega32-1-PORTD2" pointList="-300,24,-256,24" />
 
@@ -114,7 +86,7 @@
 
 <item itemtype="Connector" uid="Connector-26" startpinid="Node-26-2" endpinid="opAmp-10-inputInv" pointList="-72,-208,-72,-176,-148,-176,-148,-200" />
 
-<item itemtype="Connector" uid="Connector-27" startpinid="Oscope-7-Pin0" endpinid="Node-27-1" pointList="164,-220,-24,-220,-24,-208" />
+<item itemtype="Connector" uid="Connector-27" startpinid="Oscope-7-Pin0" endpinid="Node-27-1" pointList="60,-480,-24,-480,-24,-208" />
 
 <item itemtype="Connector" uid="Connector-28" startpinid="Node-26-1" endpinid="Node-27-0" pointList="-72,-208,-24,-208" />
 
@@ -122,7 +94,7 @@
 
 <item itemtype="Connector" uid="Connector-36" startpinid="opAmp-15-output" endpinid="Node-30-0" pointList="-100,-140,-72,-140,-72,-136" />
 
-<item itemtype="Connector" uid="Connector-38" startpinid="Node-31-1" endpinid="Oscope-7-Pin1" pointList="-48,-136,-48,-188,164,-188" />
+<item itemtype="Connector" uid="Connector-38" startpinid="Node-31-1" endpinid="Oscope-7-Pin1" pointList="-48,-136,-48,-448,60,-448" />
 
 <item itemtype="Connector" uid="Connector-39" startpinid="Node-30-1" endpinid="Node-31-0" pointList="-72,-136,-48,-136" />
 
@@ -139,8 +111,6 @@
 <item itemtype="Connector" uid="Connector-58" startpinid="Ground-9-Gnd" endpinid="Node-38-0" pointList="-332,56,-332,48" />
 
 <item itemtype="Connector" uid="Connector-59" startpinid="Node-38-2" endpinid="Node-22-0" pointList="-332,48,-332,40" />
-
-<item itemtype="Connector" uid="Connector-2" startpinid="mega32-1-PORTC1" endpinid="Node-18-0" pointList="-192,40,-80,40" />
 
 <item itemtype="Connector" uid="Connector-68" startpinid="Node-41-1" endpinid="Node-42-1" pointList="-532,-48,-532,-168,-180,-168,-180,-144" />
 
@@ -159,5 +129,15 @@
 <item itemtype="Connector" uid="Connector-78" startpinid="mega32-1-PORTV1" endpinid="Node-45-0" pointList="-192,-32,-192,-16" />
 
 <item itemtype="Connector" uid="Connector-79" startpinid="Node-45-2" endpinid="mega32-1-PORTV0" pointList="-192,-16,-192,-16" />
+
+<item itemtype="Connector" uid="Connector-86" startpinid="Ili9341-46-PinSck" endpinid="mega32-1-PORTB7" pointList="120,44,120,112,-272,112,-272,-40,-256,-40" />
+
+<item itemtype="Connector" uid="Connector-87" startpinid="Ili9341-46-PinMosi" endpinid="mega32-1-PORTB5" pointList="112,44,112,232,-288,232,-288,-56,-256,-56" />
+
+<item itemtype="Connector" uid="Connector-88" startpinid="Ili9341-46-PinCS" endpinid="mega32-1-PORTB4" pointList="88,44,88,184,-280,184,-280,-64,-256,-64" />
+
+<item itemtype="Connector" uid="Connector-89" startpinid="Ili9341-46-PinDC" endpinid="mega32-1-PORTB3" pointList="104,44,104,208,-268,208,-268,-72,-256,-72" />
+
+<item itemtype="Connector" uid="Connector-90" startpinid="Ili9341-46-PinRst" endpinid="mega32-1-PORTB2" pointList="96,44,96,256,-292,256,-292,-80,-256,-80" />
 
 </circuit>
