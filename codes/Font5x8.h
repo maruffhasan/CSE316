@@ -1,3 +1,4 @@
+#include <avr/pgmspace.h>
 #ifndef FONT5X8_H_INCLUDED
 #define FONT5X8_H_INCLUDED
 

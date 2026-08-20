@@ -3,8 +3,13 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 
-#include "SSD1306.h"
-#include "Font5x8.h"
+#include "ILI9341.h"
+// ILI9341 Color Definitions (RGB565 format)
+#define ILI9341_BLACK   0x0000
+#define ILI9341_WHITE   0xFFFF
+#define ILI9341_GREEN   0x07E0
+#define ILI9341_CYAN    0x07FF
+#define ILI9341_RED     0xF800
 
 /* ------------------------------------------------------------------
    FULL AUDIO SPECTRUM ANALYZER — Stage 3 (Final)
@@ -17,9 +22,10 @@
 #define FFT_SIZE     32
 #define FFT_STAGES   5
 #define NUM_BARS     16
-#define BAR_WIDTH    6
-#define BAR_GAP      2
-#define SCREEN_H     64
+#define SCREEN_W     320  
+#define SCREEN_H     240
+#define BAR_WIDTH    12
+#define BAR_GAP      3
 #define BASELINE     (SCREEN_H - 1)
 #define MAX_BAR_H    (SCREEN_H - 12)
 #define PEAK_HOLD    3    // Number of frames the dot hovers before falling
@@ -38,7 +44,17 @@ const int8_t W_real[16] = {127, 124, 117, 105, 89, 70, 48, 24, 0, -24, -48, -70,
 const int8_t W_imag[16] = {0, -24, -48, -70, -89, -105, -117, -124, -127, -124, -117, -105, -89, -70, -48, -24};
 
 // --- Hardware Initialization ---
+// --- Hardware Initialization ---
 void Hardware_Init(void) {
+    // 1. SPI Protocol Setup 
+    // PB7 (SCK), PB5 (MOSI), PB4 (CS), PB3 (D/C), PB2 (RST) ->output 
+    DDRB |= (1 << PB7) | (1 << PB5) | (1 << PB4) | (1 << PB3) | (1 << PB2);
+    
+    // spi enable,master mode
+    SPCR = (1 << SPE) | (1 << MSTR); 
+    SPSR = (1 << SPI2X); 
+
+    // 2. previous interrupt and adc
     DDRD &= ~(1 << PD2);
     PORTD |= (1 << PD2);
     MCUCR |= (1 << ISC01);
@@ -167,122 +183,109 @@ static void draw_spectrum(void)
 */
 static void draw_spectrum(void)
 {
-    // Clear the display buffer before drawing the new frame
-    GLCD_Clear();
+    // Clear the display with Black color
+    ILI9341_FillScreen(ILI9341_BLACK); 
 
-    // Print the currently active input channel at the top-left corner
-    GLCD_GotoXY(2, 0);
+    // Print the active channel (Assuming ILI9341_WriteString takes: X, Y, Text, TextColor, BgColor, Size)
     if (current_channel == 0) {
-        GLCD_PrintString("MIC: PA0");
+        ILI9341_WriteString(2, 0, "MIC: PA0", ILI9341_WHITE, ILI9341_BLACK, 1);
     } else {
-        GLCD_PrintString("JACK: PA1");
+        ILI9341_WriteString(2, 0, "JACK: PA1", ILI9341_WHITE, ILI9341_BLACK, 1);
     }
 
-    // Loop through all the frequency bins (16 bars) to draw them
+    // Loop through all 16 frequency bins[cite: 1]
     for (uint8_t i = 0; i < NUM_BARS; i++)
     {
-        // Calculate the X coordinates for the current bar
-        uint8_t x1 = i * (BAR_WIDTH + BAR_GAP);
-        uint8_t x2 = x1 + BAR_WIDTH - 1;
+        uint16_t x1 = i * (BAR_WIDTH + BAR_GAP);
+        uint16_t x2 = x1 + BAR_WIDTH - 1;
+        uint16_t y2 = BASELINE;
         
-        // The bottom of the bar is anchored to the BASELINE of the screen
-        uint8_t y2 = BASELINE;
-        
-        // 1. Draw the moving bar representing the current frequency magnitude
+        // 1. Draw the moving bar
         if (bar_height[i] > 0) {
-            // Calculate the top Y coordinate based on the bar height
-            uint8_t y1 = BASELINE - bar_height[i];
+            uint16_t y1 = BASELINE - bar_height[i];
             
-            // Visual separation: Low frequencies (first 8 bars) are solid
             if (i < 8) {
-                GLCD_FillRectangle(x1, y1, x2, y2, GLCD_Black);
-            } 
-            // High frequencies (remaining 8 bars) are hollow (outline only)
-            else {
-                GLCD_DrawRectangle(x1, y1, x2, y2, GLCD_Black);
+                // Low frequencies: Solid Green bars
+                // Assuming function format: (x1, y1, x2, y2, color)
+                ILI9341_FillRectangle(x1, y1, x2, y2, ILI9341_GREEN);
+            } else {
+                // High frequencies: Hollow Cyan bars
+                ILI9341_DrawRectangle(x1, y1, x2, y2, ILI9341_CYAN);
             }
         }
 
-        // 2. Draw the floating peak dot (Kinetic Gravity effect)
+        // 2. Draw the floating peak dot (Kinetic Gravity)
         if (peak_height[i] > 0) {
-            // Calculate the Y coordinate for the peak dot
-            uint8_t peak_y = BASELINE - peak_height[i];
+            uint16_t peak_y = BASELINE - peak_height[i];
             
-            // Draw a 2-pixel thick horizontal line so the falling dot is clearly visible
-            GLCD_DrawLine(x1, peak_y, x2, peak_y, GLCD_Black);
+            // Draw a thick Red line for the falling dot
+            ILI9341_DrawLine(x1, peak_y, x2, peak_y, ILI9341_RED);
             if (peak_y > 0) {
-                GLCD_DrawLine(x1, peak_y - 1, x2, peak_y - 1, GLCD_Black);
+                ILI9341_DrawLine(x1, peak_y - 1, x2, peak_y - 1, ILI9341_RED);
             }
         }
     }
-
-    // Push the updated buffer to the OLED screen to make it visible
-    GLCD_Render();
 }
 int main(void)
 {
     int16_t f_real[FFT_SIZE];
     int16_t f_imag[FFT_SIZE];
-
-    GLCD_Setup();
-    GLCD_SetFont(Font5x8, 5, 8, GLCD_Overwrite);
-    Hardware_Init(); 
+    Hardware_Init();
+    ILI9341_Init();
+    ILI9341_FillScreen(ILI9341_BLACK); 
+    
+    
 
     while (1)
     {
-        // 1. Snapshot the audio buffer safely (Unwrapping the ring buffer)
+        // 1. Snapshot the audio buffer safely
         cli(); 
-        uint8_t read_idx = buffer_index; // The current index holds the oldest sample
+        uint8_t read_idx = buffer_index; 
         for(uint8_t i = 0; i < FFT_SIZE; i++) {
             f_real[i] = audio_buffer[read_idx];
             f_imag[i] = 0; 
             
             read_idx++;
             if (read_idx >= FFT_SIZE) {
-                read_idx = 0; // Wrap around
+                read_idx = 0; 
             }
         }
         sei();
 
-        // 2. Perform the FFT
+        // 2. Perform the FFT[cite: 1]
         calculate_fft(f_real, f_imag);
 
-        // 3. Calculate magnitudes and process ADVANCED PHYSICS
+        // 3. Calculate magnitudes and process ADVANCED PHYSICS[cite: 1]
         for(uint8_t i = 0; i < NUM_BARS; i++) {
             uint32_t mag_squared = (int32_t)f_real[i]*f_real[i] + (int32_t)f_imag[i]*f_imag[i];
             uint16_t mag = int_sqrt(mag_squared);
             
-            uint8_t target_height = mag >> 3; 
+            // --- scaling update ---
+            uint16_t target_height = mag >> 1;             
             if (target_height > MAX_BAR_H) {
                 target_height = MAX_BAR_H;
             }
             
-            // --- FLUID BARS (Exponential Moving Average) ---
+            // --- FLUID BARS (Exponential Moving Average) ---[cite: 1]
             if (target_height > bar_height[i]) {
-                // Punch up instantly for fast attacks (drums/bass)
                 bar_height[i] = target_height; 
             } else {
-                // Glide down smoothly (Current = 75% Current + 25% Target)
-                // This prevents the jittery "teleporting" look
                 bar_height[i] = ((bar_height[i] * 3) + target_height) >> 2; 
             }
 
-            // --- KINETIC GRAVITY (Falling Dots) ---
+            // --- KINETIC GRAVITY (Falling Dots) ---[cite: 1]
             if (target_height >= peak_height[i]) {
-                // Push dot up and reset physics
                 peak_height[i] = target_height;
                 peak_delay[i] = PEAK_HOLD; 
-                peak_velocity[i] = 0; // Reset momentum
+                peak_velocity[i] = 0; 
             } else {
                 if (peak_delay[i] > 0) {
-                    peak_delay[i]--; // Hover in place at the top
+                    peak_delay[i]--; 
                 } else if (peak_height[i] > 0) {
-                    // Gravity accelerates over time
                     peak_velocity[i]++; 
                     
-                    // Bit-shift divides velocity by 2 to control the fall speed
                     uint8_t drop = peak_velocity[i] >> 1; 
-                    if (drop == 0) drop = 1; // Minimum drop of 1 pixel
+                    if (drop == 0) drop = 1; 
                     
                     if (peak_height[i] > drop) {
                         peak_height[i] -= drop;
@@ -293,11 +296,12 @@ int main(void)
             }
         }
 
-        // 4. Render to OLED
+        // 4. Render to Color TFT[cite: 1]
         draw_spectrum();
         
-        // Slightly faster refresh rate (~33 FPS) for smoother animation
+        // Slightly faster refresh rate (~33 FPS) for smoother animation[cite: 1]
         _delay_ms(30);   
     }
+    
     return 0;
 }
