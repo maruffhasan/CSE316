@@ -293,6 +293,10 @@ int main(void)
                         peak_height[i] = 0;
                     }
                 }
+                if (peak_height[i] < bar_height[i]) {
+                    peak_height[i] = bar_height[i]; 
+                    peak_velocity[i] = 0;           
+                }
             }
         }
 
