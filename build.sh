@@ -1,7 +1,6 @@
 AVR_MCU="atmega32"
 AVR_PROG="usbasp"
 
-
 avrbuild() {
   if [ $# -lt 1 ]; then
     echo "Usage: avrbuild <file.c> [file2.c ...]"
@@ -16,7 +15,6 @@ avrbuild() {
 
   avr-gcc \
     -mmcu="$AVR_MCU" \
-    -DF_CPU=16000000UL \
     -Os \
     -Wall \
     "$@" \

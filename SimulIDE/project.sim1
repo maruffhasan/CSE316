@@ -1,0 +1,45 @@
+<circuit version="1.1.0" rev="1912+dfsg-4+b1" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+
+<item itemtype="Fixed Voltage" CircId="Fixed Voltage-6" mainComp="false" Show_id="false" Show_Val="false" Pos="-324,460" rotation="0" hflip="1" vflip="1" label="Fixed Voltage-6" idLabPos="-64,-24" labelrot="0" valLabPos="-16,8" valLabRot="0" Voltage="5 V" Out="true" />
+
+<item itemtype="Ground" CircId="Ground-4" mainComp="false" Show_id="false" Show_Val="false" Pos="-108,528" rotation="0" hflip="1" vflip="1" label="Ground-4" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="MCU" CircId="mega32-1" mainComp="false" Show_id="true" Show_Val="false" Pos="-264,396" rotation="0" hflip="1" vflip="1" label="mega32-1" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0" Frequency="16 MHz" Program="../out/main_fft_spectrum.hex" Auto_Load="false" saveEepr="true" Logic_Symbol="false" Wdt_enabled="false" SerialMon="-1" />
+
+<item itemtype="WaveGen" CircId="WaveGen-9" mainComp="false" ShowProp="Mid_Volt" Show_id="false" Show_Val="true" Pos="-296,268" rotation="0" hflip="1" vflip="1" label="WaveGen-9" idLabPos="-64,-24" labelrot="0" valLabPos="-16,8" valLabRot="0" Out="true" Running="true" Wave_Type="Random" Freq="10 kHz" Phase="0 _º" Steps="100 _Steps" Duty="50 _%" Always_On="false" Bipolar="false" Floating="false" Semi_Ampli="2 V" Mid_Volt="2.5 V" />
+
+<item itemtype="Oscope" CircId="Oscope-20" mainComp="false" Show_id="false" Show_Val="false" Pos="-32,236" rotation="0" hflip="1" vflip="1" label="Oscope-20" idLabPos="-90,-100" labelrot="0" valLabPos="-16,20" valLabRot="0" Basic_X="135 _Pixels" Basic_Y="135 _Pixels" BufferSize="600000 Samples" InputAdmit="0.1 µ℧" TimDiv="1000000000" TimPos="0,0,0,0," VolDiv="1,1,1,1," Tunnels=",,,," Trigger="4" Filter="0.1 V" Trigger="4" AutoSC="4" Tracks="1" HideCh="false,false,false,false," VolPos="0,0,0,0," />
+
+<item itemtype="Hd44780" CircId="Hd44780-3" mainComp="false" Show_id="true" Show_Val="false" Pos="-132,432" rotation="0" hflip="1" vflip="1" label="Hd44780-3" idLabPos="70,-82" labelrot="0" valLabPos="-16,20" valLabRot="0" Rows="2 _Rows" Cols="16 _Columns" />
+
+<item itemtype="Node" CircId="Node-7" mainComp="false" Pos="-292,460" />
+
+<item itemtype="Node" CircId="Node-41" mainComp="false" Pos="-208,268" />
+
+<item itemtype="Connector" uid="Connector-11" startpinid="mega32-1-PORTC7" endpinid="Hd44780-3-PinEn" pointList="-208,492,-100,492,-100,440" />
+
+<item itemtype="Connector" uid="Connector-113" startpinid="WaveGen-9-outnod" endpinid="Node-41-1" pointList="-280,268,-208,268" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="mega32-1-PORTD7" endpinid="Hd44780-3-dataPin7" pointList="-208,556,-36,556,-36,440" />
+
+<item itemtype="Connector" uid="Connector-17" startpinid="Node-7-1" endpinid="mega32-1-PORTV0" pointList="-292,460,-292,388,-188,388,-188,484,-208,484" />
+
+<item itemtype="Connector" uid="Connector-19" startpinid="Node-7-2" endpinid="mega32-1-RST" pointList="-292,460,-272,460,-272,468" />
+
+<item itemtype="Connector" uid="Connector-124" startpinid="Node-41-2" endpinid="Oscope-20-Pin0" pointList="-208,268,-208,188,-120,188" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="mega32-1-PORTD5" endpinid="Hd44780-3-dataPin5" pointList="-272,548,-284,548,-284,568,-52,568,-52,440" />
+
+<item itemtype="Connector" uid="Connector-18" startpinid="Fixed Voltage-6-outnod" endpinid="Node-7-0" pointList="-308,460,-292,460" />
+
+<item itemtype="Connector" uid="Connector-15" startpinid="Ground-4-Gnd" endpinid="Hd44780-3-PinRW" pointList="-108,512,-108,440" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="mega32-1-PORTD4" endpinid="Hd44780-3-dataPin4" pointList="-272,540,-292,540,-292,576,-60,576,-60,440" />
+
+<item itemtype="Connector" uid="Connector-12" startpinid="Hd44780-3-PinRS" endpinid="mega32-1-PORTC6" pointList="-116,440,-116,500,-208,500" />
+
+<item itemtype="Connector" uid="Connector-119" startpinid="Node-41-0" endpinid="mega32-1-PORTA0" pointList="-208,268,-208,404" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="mega32-1-PORTD6" endpinid="Hd44780-3-dataPin6" pointList="-272,556,-272,560,-44,560,-44,440" />
+
+</circuit>
