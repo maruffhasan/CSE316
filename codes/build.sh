@@ -21,17 +21,17 @@ avrbuild() {
     -Wall \
     "$@" \
     -lm \
-    -o "out/$name.elf" || return 1
+    -o "$name.elf" || return 1
 
   avr-objcopy \
     -O ihex \
     -R .eeprom \
-    "out/$name.elf" \
-    "out/$name.hex" || return 1
+    "$name.elf" \
+    "$name.hex" || return 1
 
-  rm -f "out/$name.elf"
+  rm -f "$name.elf"
 
-  echo "✓ Built out/$name.hex"
+  echo "✓ Built $name.hex"
 }
 
 avrbuild $@
