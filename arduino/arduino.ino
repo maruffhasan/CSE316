@@ -9,7 +9,7 @@
 #define TFT_ROTATION 3
 
 // ======================= TUNABLE PARAMETERS =======================
-#define MAX_FREQ     10000UL   // Hz. Must be the SAME as MAX_FREQ_HZ in atmega.c
+#define MAX_FREQ     6000UL   // Hz. Must be the SAME as MAX_FREQ_HZ in atmega.c
 #define HEIGHT_GAIN  4        // bar height gain
 #define WAVE_GAIN    1        // waveform vertical gain
 #define FREQ_CAL     1.0f     // trim if a known tone reads off (ATmega RC clock error)

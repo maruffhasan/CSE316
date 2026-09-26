@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define MAX_FREQ_HZ 10000UL // <<< tunable, must match arduino.ino (MAX_FREQ)
+#define MAX_FREQ_HZ 6000UL // <<< tunable, must match arduino.ino (MAX_FREQ)
 
 #define N 32         // FFT size
 #define UBRR_VALUE 1 // U2X, 1 MHz -> 62500 baud (exact)
