@@ -9,12 +9,13 @@
 #define TFT_ROTATION 3
 
 // ======================= TUNABLE PARAMETERS =======================
-#define MAX_FREQ     6000UL   // Hz. Must be the SAME as MAX_FREQ_HZ in atmega.c
-#define HEIGHT_GAIN  4        // bar height gain
-#define WAVE_GAIN    1        // waveform vertical gain
+#define MAX_FREQ     2000UL   // Hz. Must be the SAME as MAX_FREQ_HZ in atmega.c
+#define HEIGHT_GAIN  2        // bar height gain
+#define WAVE_GAIN    2        // waveform vertical gain (ATmega applies the wave gain now)
 #define FREQ_CAL     1.0f     // trim if a known tone reads off (ATmega RC clock error)
 #define MIN_PEAK     4        // ignore peaks below this amplitude
 #define WAVE_HYST    4
+#define WAVE_UP      2        // waveform detail: 1 = 32 bars, 2 = 63 bars, 4 = 125 bars
 #define SEG_H        6        // segment height in pixels
 #define SEG_GAP      1        // gap between segments (0 = solid bar)
 #define FALL_SEGS    255      // max segments a bar may drop per frame (255 = instant)
@@ -22,6 +23,9 @@
 
 #define NUM_BINS     16       // positive FFT bins 1..16
 #define NUM_SAMPLES  32
+#define WAVE_COLS    ((NUM_SAMPLES - 1) * WAVE_UP + 1)
+#define WAVE_PITCH   (320 / WAVE_COLS)            // px per column
+#define WAVE_BARW    (WAVE_PITCH > 1 ? WAVE_PITCH - 1 : 1)
 #define STATUS_H     12
 #define FREQ_W       64
 
@@ -35,7 +39,7 @@ Adafruit_ILI9341 tft(TFT_CS, TFT_DC, TFT_RST);
 
 int amp[NUM_BINS];
 int wave[NUM_SAMPLES];
-int prevWaveY[NUM_SAMPLES];
+int8_t prevWaveY[WAVE_COLS];
 int prevSeg[NUM_BINS] = {0};
 uint16_t segColor[64];
 
@@ -139,25 +143,65 @@ int waveFreq() {
   return (int)((n - 1) * SAMPLE_RATE / (last - first) + 0.5f);
 }
 
-int waveX(int i) { return (int)((long)i * (scrW - 1) / (NUM_SAMPLES - 1)); }
+// Value of the waveform at column c: original samples plus cubic (Catmull-Rom)
+// interpolated points in between. Integer maths only.
+int waveAt(int c) {
+  int i1 = c / WAVE_UP, k = c % WAVE_UP;
+  if (i1 >= NUM_SAMPLES - 1) return wave[NUM_SAMPLES - 1] - 128;
+  int i0 = i1 > 0 ? i1 - 1 : 0;
+  int i2 = i1 + 1;
+  int i3 = i2 + 1 < NUM_SAMPLES ? i2 + 1 : NUM_SAMPLES - 1;
+  if (k == 0) return wave[i1] - 128;
+  long p0 = wave[i0] - 128, p1 = wave[i1] - 128, p2 = wave[i2] - 128, p3 = wave[i3] - 128;
+  long U = WAVE_UP;
+  long v = (2 * p1) * U * U * U + (p2 - p0) * k * U * U +
+           (2 * p0 - 5 * p1 + 4 * p2 - p3) * k * k * U +
+           (-p0 + 3 * p1 - 3 * p2 + p3) * k * k * k;
+  v = v / (2 * U * U * U);
+  if (v > 127) v = 127;
+  if (v < -127) v = -127;
+  return (int)v;
+}
 
-int waveY(int v) {
-  long d = (long)((v - 128) * WAVE_GAIN);
-  if (d > 127) d = 127;
-  if (d < -127) d = -127;
-  return scrH - 1 - (int)((d + 128) * (long)(barAreaH - 1) / 255);
+// Waveform drawn like the spectrum: thin bars growing from the centre line,
+// only the part of each bar that changed is redrawn (fillRect only).
+// prevWaveY[c] = previous signed bar offset (rows above the centre line > 0).
+static void waveRows(int x, int w, int midY, int oLo, int oHi, uint16_t color) {
+  if (oHi < oLo) return;
+  tft.fillRect(x, midY - oHi, w, oHi - oLo + 1, color);
 }
 
 void drawWave() {
   packetOk(); switchMode(2);
-  int newY[NUM_SAMPLES];
-  for (int i = 0; i < NUM_SAMPLES; i++) newY[i] = waveY(wave[i]);
-  if (waveDrawn)
-    for (int i = 1; i < NUM_SAMPLES; i++)
-      tft.drawLine(waveX(i - 1), prevWaveY[i - 1], waveX(i), prevWaveY[i], ILI9341_BLACK);
-  for (int i = 1; i < NUM_SAMPLES; i++)
-    tft.drawLine(waveX(i - 1), newY[i - 1], waveX(i), newY[i], ILI9341_GREEN);
-  for (int i = 0; i < NUM_SAMPLES; i++) prevWaveY[i] = newY[i];
+  const int half = barAreaH / 2 - 2;
+  const int midY = STATUS_H + barAreaH / 2;
+  const int x0   = (scrW - WAVE_COLS * WAVE_PITCH) / 2;
+
+  for (int c = 0; c < WAVE_COLS; c++) {
+    long d = (long)waveAt(c) * WAVE_GAIN;
+    if (d > 127) d = 127;
+    if (d < -127) d = -127;
+    int n = (int)(d * half / 127);              // new offset
+    int o = prevWaveY[c];                       // old offset
+    int x = x0 + c * WAVE_PITCH;
+    if (waveDrawn && n == o) continue;
+
+    if (!waveDrawn) {
+      waveRows(x, WAVE_BARW, midY, n < 0 ? n : 0, n > 0 ? n : 0, ILI9341_GREEN);
+    } else if ((o >= 0) == (n >= 0)) {          // same side of the centre line
+      if (n >= 0) {
+        if (n > o) waveRows(x, WAVE_BARW, midY, o + 1, n, ILI9341_GREEN);
+        else       waveRows(x, WAVE_BARW, midY, n + 1, o, ILI9341_BLACK);
+      } else {
+        if (n < o) waveRows(x, WAVE_BARW, midY, n, o - 1, ILI9341_GREEN);
+        else       waveRows(x, WAVE_BARW, midY, o, n - 1, ILI9341_BLACK);
+      }
+    } else {                                    // crossed the centre line
+      waveRows(x, WAVE_BARW, midY, o < 0 ? o : 0, o > 0 ? o : 0, ILI9341_BLACK);
+      waveRows(x, WAVE_BARW, midY, n < 0 ? n : 0, n > 0 ? n : 0, ILI9341_GREEN);
+    }
+    prevWaveY[c] = (int8_t)n;
+  }
   waveDrawn = true;
   showFreq(waveFreq());
 }
